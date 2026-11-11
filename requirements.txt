@@ -1,0 +1,6 @@
+# Dependencias directas (Fases 0–1). Se agregan librerías solo cuando una fase las necesita.
+# Versiones exactas instaladas: ver requirements-lock.txt (generado con pip freeze).
+numpy>=2.3
+pandas>=2.3.3
+pyarrow>=22.0
+faker>=37.0

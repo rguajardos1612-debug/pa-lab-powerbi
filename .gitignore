@@ -1,0 +1,32 @@
+# ── Python ─────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── Datos (D-003): nunca se versionan; se regeneran con el generador ──
+data/*
+!data/.gitkeep
+lake/bronze/
+lake/silver/
+lake/gold/
+
+# ── Power BI (PBIP) ────────────────────────────────────
+# Configuración local y caché del modelo: no son código
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+# Usamos PBIP, no PBIX (D-001)
+*.pbix
+
+# ── Secretos (Fase 10) ─────────────────────────────────
+.env
+*.key
+secrets/
+
+# ── Sistema / editores ─────────────────────────────────
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

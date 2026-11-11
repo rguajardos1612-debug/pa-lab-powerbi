@@ -1,0 +1,8 @@
+# Normaliza finales de línea para que Git no marque archivos como "cambiados" entre Windows y otros sistemas
+* text=auto
+
+# Binarios: nunca tocar
+*.parquet binary
+*.abf     binary
+*.png     binary
+*.pbix    binary

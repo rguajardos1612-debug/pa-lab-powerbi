@@ -78,8 +78,10 @@ Las sesiones son de ~4 h. El orden pone primero los dashboards (DAX es la habili
 
 ## Estado actual
 
-- **Fase actual:** 0 — Setup
-- **Próxima sesión:** S1
+- **Fase actual:** 1 — Datos ficticios (Fase 0 cerrada)
+- **Próxima sesión:** S2 — diccionario de datos tipo SuccessFactors (persona, puesto, eventos, compensación) y diseño del generador
+- **Entorno:** Python 3.14.10 en `.venv`; numpy 2.5.4, pandas 3.1.1, pyarrow 26.0.1, Faker 40.54.0 (ver `requirements-lock.txt`)
+- **Ojo en S2:** pandas 3.x — muchos ejemplos en internet son de pandas 2; si algo de afuera no funciona, sospechar de eso primero
 - **Bloqueos:** ninguno
 
 ## Bitácora
@@ -87,3 +89,4 @@ Las sesiones son de ~4 h. El orden pone primero los dashboards (DAX es la habili
 | Sesión | Fecha | Qué se hizo | Pendiente para la siguiente |
 |---|---|---|---|
 | S0 | 2026-11-10 | Definición del proyecto, alcance y roadmap | Crear repo y proyecto en Claude; conectar carpeta |
+| S1 | 2026-11-10 | Estructura del repo, `.gitignore` / `.gitattributes`, `.venv` con Python 3.14, `requirements.txt` + lock, `check_env.py` (5/5 OK), decisiones D-001 a D-004, primer PBIP (`powerbi/S01_prueba`) con tabla `_Medidas` y medida `Prueba = 1` en TMDL/PBIR. **Errores:** instalé en el Python global por no activar `.venv` (lo detectó la ruta de pip); lock guardado en UTF-16 con `>`; en C confundí activar con reconstruir — corregido: `py -3.14 -m venv .venv` → activar → `pip install -r requirements-lock.txt`. | S2: antes de correr Python, confirmar `(.venv)` en el prompt |

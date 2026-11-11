@@ -1,0 +1,19 @@
+model Model
+	culture: es-CL
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: es-CL
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["_Medidas"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table _Medidas
+
+ref cultureInfo es-CL
+
