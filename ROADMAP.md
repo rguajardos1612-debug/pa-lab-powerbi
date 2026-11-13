@@ -65,7 +65,7 @@ Las sesiones son de ~4 h. El orden pone primero los dashboards (DAX es la habili
 ### Patrones que se plantan en los datos (para que haya algo que descubrir)
 
 - Dotación que sube y baja con el ciclo de vida de las obras.
-- Rotación de obreros dominada por término de obra/faena; rotación voluntaria de empleados concentrada en los primeros 12 meses.
+- Rotación de obreros dominada por término de obra/faena. Renuncia temprana de empleados: la **tasa mensual** de renuncia con ≤12 meses de antigüedad es ≈3,3 veces la de quienes tienen más (se mide como tasa condicionada a la antigüedad, no como proporción de las renuncias; S2).
 - Ausentismo con estacionalidad invernal y diferencias por obra.
 - Brecha salarial por género en algunos cargos, no en todos.
 - Distribución de desempeño con sesgo de indulgencia en ciertas gerencias.
@@ -78,10 +78,12 @@ Las sesiones son de ~4 h. El orden pone primero los dashboards (DAX es la habili
 
 ## Estado actual
 
-- **Fase actual:** 1 — Datos ficticios (Fase 0 cerrada)
-- **Próxima sesión:** S2 — diccionario de datos tipo SuccessFactors (persona, puesto, eventos, compensación) y diseño del generador
+- **Fase actual:** 1 — Datos ficticios (S2 cerrada: diccionario y diseño listos)
+- **Próxima sesión:** S3 — implementar el generador siguiendo `docs/diseno_generador.md` (algoritmo en 9 pasos), generar los datos en `data/` y verificar las 11 reglas del diccionario y la tabla de valores esperados (§3)
+- **Documentos base para S3:** `docs/diccionario_datos.md`, `docs/diseno_generador.md`, `generator/config.py`, decisiones D-005 a D-011
 - **Entorno:** Python 3.14.10 en `.venv`; numpy 2.5.4, pandas 3.1.1, pyarrow 26.0.1, Faker 40.54.0 (ver `requirements-lock.txt`)
-- **Ojo en S2:** pandas 3.x — muchos ejemplos en internet son de pandas 2; si algo de afuera no funciona, sospechar de eso primero
+- **Ojo en S3:** (1) antes de correr Python: `cd C:\Data\pa-lab-powerbi` y confirmar `(.venv)` en el prompt; ante un error, leerlo antes de reconstruir nada. (2) Los códigos de catálogo (`HIRE_NEW`, `TER_RENUNCIA`, `A`/`T`) se copian del diccionario, nunca se escriben de memoria. (3) pandas 3.x: si un ejemplo de internet falla, sospechar primero de la versión
+- **Pregunta abierta valor esperado frágil:** personas distintas (≈26.000) — acumula varias estimaciones; discutir en S3 antes de tratarlo como error
 - **Bloqueos:** ninguno
 
 ## Bitácora
@@ -90,3 +92,4 @@ Las sesiones son de ~4 h. El orden pone primero los dashboards (DAX es la habili
 |---|---|---|---|
 | S0 | 2026-11-10 | Definición del proyecto, alcance y roadmap | Crear repo y proyecto en Claude; conectar carpeta |
 | S1 | 2026-11-10 | Estructura del repo, `.gitignore` / `.gitattributes`, `.venv` con Python 3.14, `requirements.txt` + lock, `check_env.py` (5/5 OK), decisiones D-001 a D-004, primer PBIP (`powerbi/S01_prueba`) con tabla `_Medidas` y medida `Prueba = 1` en TMDL/PBIR. **Errores:** instalé en el Python global por no activar `.venv` (lo detectó la ruta de pip); lock guardado en UTF-16 con `>`; en C confundí activar con reconstruir — corregido: `py -3.14 -m venv .venv` → activar → `pip install -r requirements-lock.txt`. | S2: antes de correr Python, confirmar `(.venv)` en el prompt |
+| S2 | 2026-11-13 | Diccionario de datos tipo Employee Central (`docs/diccionario_datos.md`: 7 tablas con nombres OData, catálogos, `FOEventReason` con `cust_tipoRotacion`, regla de dotación, 11 reglas de validación). Decisiones D-005 (*effective dating*), D-006 (≈10.000 = dotación promedio de cierre de mes, ±12 %, 75/25), D-007 (IDs ficticios `FCL`/`FPE` aleatorios), D-008 (término: fila TERMINATION al día siguiente del último día), D-009 (`eventReason` en `EmpPayCompRecurring`), D-010 (calentamiento de 24 meses conservado como historia), D-011 (obras activas en promedio). `generator/config.py` con validación (probado: error de pesos detectado). `docs/diseno_generador.md` con algoritmo y 15 valores esperados calculados en los ejercicios de flujo (Ley de Little). **Errores:** en EmpJob junté contratación y término en una fila (1 evento = 1 fila); usé códigos inventados (`NEW_HIRE`, `Active`) en vez de los del catálogo, lo que rompería la relación en Power BI; corrí comandos desde `System32` sin `cd` y reaccioné reconstruyendo el entorno en vez de leer el error; supuse 56 obras simultáneas; justifiqué con supuestos (costo de regenerar) que contradicen D-003. | S3: implementar el generador y verificarlo contra §3 de `diseno_generador.md` |
