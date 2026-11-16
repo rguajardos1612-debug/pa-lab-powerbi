@@ -192,7 +192,7 @@ Con la regla de dotación: el 2025-06-30 está vigente la fila 1 (`A`), así que
 | `FODepartment` | `externalCode`, `name`, `division` | Departamentos dentro de cada gerencia |
 | `FOLocation` | `externalCode`, `name`, `country`, `region`, `cust_tipo`, `cust_obraInicio`, `cust_obraFin` | Obras y faenas con **ciclo de vida** (inicio y fin), además de oficinas centrales (`cust_tipo = OFICINA`, sin fin) |
 | `FOJobCode` | `externalCode`, `name`, `employeeClass`, `payGrade` | Cargos: Jornal, Ayudante, Maestro 2ª, Maestro 1ª, Capataz… (OBR); Analista, Ingeniero, Jefe de Obra, Gerente… (EMP) |
-| `FOPayGrade` | `externalCode`, `name`, `country`, `minimo`, `medio`, `maximo` | Banda salarial por grado y país (base para el compa-ratio de la Fase 6) |
+| `FOPayGrade` | `externalCode`, `name`, `country`, `startDate`, `endDate`, `minimo`, `medio`, `maximo` | Banda salarial por grado, país y vigencia anual (D-017; base para el compa-ratio de la Fase 6) |
 | `FOEventReason` | `externalCode`, `name`, `event`, `emplStatus`, `cust_tipoRotacion` | Ver la tabla siguiente |
 
 ### 7.1 `FOEventReason` (lista cerrada)
@@ -202,6 +202,7 @@ Con la regla de dotación: el 2025-06-30 está vigente la fila 1 (`A`), así que
 | `HIRE_NEW` | Nueva contratación | HIRE | A | — |
 | `REHIRE_OBRA` | Recontratación para nueva obra | REHIRE | A | — |
 | `TRF_OBRA` | Cambio de obra | TRANSFER | A | — |
+| `TRF_OFICINA` | Traslado de obra a oficina (D-018) | TRANSFER | A | — |
 | `TRF_AREA` | Cambio de área | TRANSFER | A | — |
 | `PRO_PROM` | Promoción | PROMOTION | A | — |
 | `PAY_REAJ` | Reajuste general | PAY_CHANGE | A | — |

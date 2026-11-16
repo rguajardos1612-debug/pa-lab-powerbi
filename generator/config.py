@@ -10,7 +10,7 @@ Uso (desde la raíz del repo, con .venv activado):
 Muestra un resumen de la configuración y la valida. Termina con código 0 si es
 consistente y 1 si hay errores.
 
-Referencias: docs/diccionario_datos.md y docs/decisiones.md (D-003, D-005 a D-009).
+Referencias: docs/diccionario_datos.md y docs/decisiones.md (D-003, D-005 a D-023).
 Todos los valores son inventados. Ninguno viene de una empresa real.
 """
 
@@ -89,6 +89,61 @@ GERENCIAS: dict[str, str] = {
 }
 
 
+# Gerencia (FODivision) de cada colaborador. La llave es un cargo (si la gerencia
+# depende del cargo) o una clase (valor por defecto para los demás cargos de la clase).
+DIVISION_CARGO: dict[str, dict[str, float]] = {
+    "OBR": {"DIV_OPS": 1.0},
+    "JC_ING": {"DIV_ING": 1.0},
+    "JC_JOB": {"DIV_OPS": 1.0},
+    "JC_PRV": {"DIV_PRV": 1.0},
+    "EMP": {"DIV_OPS": 0.20, "DIV_ING": 0.20, "DIV_PRV": 0.10, "DIV_AYF": 0.30, "DIV_PER": 0.20},
+}
+
+# Oficinas (FOLocation con cust_tipo = OFICINA): una por país, sin fecha de fin.
+OFICINAS: dict[str, dict[str, str]] = {
+    "OF_CL_SCL": {"name": "Oficina Central Santiago", "country": "CHL", "region": "Metropolitana",
+                  "businessUnit": "BU_CORP"},
+    "OF_PE_LIM": {"name": "Oficina Central Lima", "country": "PER", "region": "Lima",
+                  "businessUnit": "BU_CORP"},
+}
+
+# Regiones donde puede quedar una obra (FOLocation.region)
+REGIONES_OBRA: dict[str, tuple[str, ...]] = {
+    "CHL": ("Antofagasta", "Atacama", "Coquimbo", "Valparaíso", "Metropolitana",
+            "O'Higgins", "Biobío", "Los Lagos"),
+    "PER": ("Lima", "Arequipa", "Moquegua", "La Libertad", "Piura", "Cusco"),
+}
+
+# Empleados en obra (Dotacion.empleados_en_obra = 45 %). Estos cargos trabajan
+# siempre en una obra; el cargo de ajuste reparte el resto entre obra y oficina
+# para llegar al 45 %. El generador DERIVA la fracción del cargo de ajuste:
+#   (empleados_en_obra − pesos de CARGOS_EN_OBRA) ÷ peso del cargo de ajuste
+CARGOS_EN_OBRA: tuple[str, ...] = ("JC_ING", "JC_JOB", "JC_PRV")
+CARGO_AJUSTE_OBRA: str = "JC_ADM"
+
+# Condiciones de contrato por clase y país (EmpJob.contractType, standardHours)
+CONTRATO_CLASE: dict[str, str] = {"OBR": "OBRA", "EMP": "INDEF"}
+HORAS_SEMANALES: dict[str, float] = {"CHL": 44.0, "PER": 48.0}
+
+# Catálogo de motivos (FOEventReason). Copiado de docs/diccionario_datos.md §7.1.
+# (externalCode, name, event, emplStatus, cust_tipoRotacion)
+EVENT_REASONS: tuple[tuple[str, str, str, str, str | None], ...] = (
+    ("HIRE_NEW",     "Nueva contratación",             "HIRE",        "A", None),
+    ("REHIRE_OBRA",  "Recontratación para nueva obra", "REHIRE",      "A", None),
+    ("TRF_OBRA",     "Cambio de obra",                 "TRANSFER",    "A", None),
+    ("TRF_OFICINA",  "Traslado de obra a oficina",     "TRANSFER",    "A", None),
+    ("TRF_AREA",     "Cambio de área",                 "TRANSFER",    "A", None),
+    ("PRO_PROM",     "Promoción",                      "PROMOTION",   "A", None),
+    ("PAY_REAJ",     "Reajuste general",               "PAY_CHANGE",  "A", None),
+    ("PAY_MERIT",    "Aumento por mérito",             "PAY_CHANGE",  "A", None),
+    ("TER_FIN_OBRA", "Término de obra o faena",        "TERMINATION", "T", "FIN_OBRA"),
+    ("TER_RENUNCIA", "Renuncia voluntaria",            "TERMINATION", "T", "VOLUNTARIA"),
+    ("TER_NEC_EMP",  "Necesidades de la empresa",      "TERMINATION", "T", "INVOLUNTARIA"),
+    ("TER_DISCIPL",  "Despido disciplinario",          "TERMINATION", "T", "INVOLUNTARIA"),
+    ("TER_MUTUO",    "Mutuo acuerdo",                  "TERMINATION", "T", "INVOLUNTARIA"),
+)
+
+
 @dataclass(frozen=True)
 class Obras:
     """Obras y faenas: cada una tiene un ciclo de vida (FOLocation.cust_obraInicio/Fin)."""
@@ -107,6 +162,14 @@ class Obras:
     fraccion_bajada: float = 0.25
     # El tamaño del peak de cada obra NO se fija aquí: el generador lo escala
     # para que la suma de todas las obras más las oficinas cumpla D-006.
+    # D-014: manda la curva de D-006. Cada mes, los trapecios se multiplican por un
+    # factor común f(m) = objetivo de obreros ÷ suma de trapecios. Si f(m) sale de
+    # este rango, la curva regular se ve artificial (pregunta abierta de S2).
+    # Tamaño relativo del peak de cada obra: lognormal con esta desviación (en log).
+    # 0 = todas las obras del mismo tamaño.
+    dispersion_tamano: float = 0.40
+    factor_escala_min: float = 0.70
+    factor_escala_max: float = 1.30
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +223,27 @@ class Remuneracion:
     promocion_pct: float = 0.12
 
 
+# Escalera de promociones (D-015): cargo de origen → cargo siguiente.
+# Los cargos que no aparecen como origen (CAP, GER) no se promueven.
+ESCALERA: dict[str, str] = {
+    # Obreros
+    "JC_JOR": "JC_AYU",
+    "JC_AYU": "JC_MAE2",
+    "JC_MAE2": "JC_MAE1",
+    "JC_MAE1": "JC_CAP",
+    # Empleados: administración y análisis
+    "JC_ADM": "JC_ANA",
+    "JC_ANA": "JC_ANA_SR",
+    "JC_ANA_SR": "JC_JEF",
+    "JC_JEF": "JC_SUB",
+    "JC_SUB": "JC_GER",
+    # Empleados: terreno
+    "JC_ING": "JC_JOB",
+    "JC_JOB": "JC_SUB",
+    "JC_PRV": "JC_JEF",
+}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 6. Movimientos (probabilidades MENSUALES por colaborador activo)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -190,12 +274,17 @@ class Movimientos:
             "TER_DISCIPL": 0.00,
         }
     )
-    # Promociones y transferencias
+    # Promociones (D-015): son probabilidades MÁXIMAS. Solo se promueve si el cargo
+    # de destino (ESCALERA) tiene vacante respecto de su peso en CARGOS.
     obr_promocion: float = 0.010
     emp_promocion: float = 0.008
     emp_transferencia_area: float = 0.004
-    # Los obreros cambian de obra (TRF_OBRA) cuando su obra baja dotación y otra
-    # obra del mismo país necesita gente; el generador lo resuelve en S3.
+    # Traslado de obreros (D-013): fracción MÁXIMA de los sobrantes de una obra en
+    # bajada que pasa a otra obra del mismo país con déficit (TRF_OBRA). El resto
+    # termina con TER_FIN_OBRA.
+    obr_fraccion_traslado: float = 0.20
+    # Los empleados no terminan por fin de obra (D-012): se trasladan (TRF_OBRA) a
+    # otra obra activa del país o a una oficina.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +297,9 @@ class Demografia:
     edad_ingreso_max: int = 65
     edad_ingreso_media: dict[str, int] = field(default_factory=lambda: {"OBR": 36, "EMP": 33})
     edad_ingreso_desv: int = 9
+    estado_civil: dict[str, float] = field(
+        default_factory=lambda: {"S": 0.45, "C": 0.45, "D": 0.07, "V": 0.03}
+    )
     locale_faker: dict[str, str] = field(default_factory=lambda: {"CHL": "es_CL", "PER": "es_ES"})
 
 
@@ -223,6 +315,10 @@ class Patrones:
     brecha_genero: dict[str, float] = field(
         default_factory=lambda: {"JC_ING": -0.08, "JC_JOB": -0.10, "JC_JEF": -0.06}
     )
+    # Tolerancia de la validación de la brecha: máx(2 pp; z × error estándar del
+    # cargo). Separa errores del generador del ruido de muestreo en cargos chicos.
+    tolerancia_brecha_min: float = 0.02
+    tolerancia_brecha_z: float = 3.0   # D-023: con 14 cargos, z = 2 daría ≈48 % de falsas alarmas
     # Los otros dos patrones de la Fase 1 ya están en otras secciones:
     #   - el ciclo de obras en Dotacion.oscilacion / ciclo_meses
     #   - la renuncia temprana de empleados en Movimientos.emp_renuncia_hasta_12m
@@ -301,6 +397,8 @@ def validar() -> list[str]:
         errores.append("Los países de Obras.activas_promedio no coinciden con COMPANIAS")
     if not OBRAS.duracion_min_meses <= OBRAS.duracion_max_meses:
         errores.append("Obras: duracion_min_meses es mayor que duracion_max_meses")
+    if not 0 < OBRAS.factor_escala_min < 1 < OBRAS.factor_escala_max:
+        errores.append("Obras: debe cumplirse 0 < factor_escala_min < 1 < factor_escala_max")
     if OBRAS.fraccion_subida + OBRAS.fraccion_bajada >= 1.0:
         errores.append("Obras: subida + bajada debe ser menor que 1 (si no, la obra no tiene peak)")
 
@@ -322,12 +420,62 @@ def validar() -> list[str]:
         if any(v <= 0 for v in c.sueldo_medio.values()):
             errores.append(f"{c.codigo}: sueldo_medio debe ser positivo")
 
+    # Escalera (D-015)
+    clase_de = {c.codigo: c.clase for c in CARGOS}
+    for origen, destino in ESCALERA.items():
+        if origen not in clase_de or destino not in clase_de:
+            errores.append(f"ESCALERA: {origen} → {destino} usa un cargo que no existe")
+        elif clase_de[origen] != clase_de[destino]:
+            errores.append(f"ESCALERA: {origen} → {destino} cambia de clase")
+    for inicio in ESCALERA:
+        visto, actual = set(), inicio
+        while actual in ESCALERA:
+            if actual in visto:
+                errores.append(f"ESCALERA: ciclo que pasa por {inicio}")
+                break
+            visto.add(actual)
+            actual = ESCALERA[actual]
+
+    # Gerencias, oficinas y empleados en obra
+    for llave, reparto in DIVISION_CARGO.items():
+        if llave not in codigos and llave not in DOTACION.participacion_clase:
+            errores.append(f"DIVISION_CARGO: {llave} no es cargo ni clase")
+        _suma_uno(f"DIVISION_CARGO[{llave}]", reparto, errores)
+        for div in reparto:
+            if div not in GERENCIAS:
+                errores.append(f"DIVISION_CARGO[{llave}]: {div} no existe en GERENCIAS")
+    for clase in DOTACION.participacion_clase:
+        if clase not in DIVISION_CARGO:
+            errores.append(f"DIVISION_CARGO: falta el valor por defecto de la clase {clase}")
+    paises_oficina = [o["country"] for o in OFICINAS.values()]
+    if sorted(paises_oficina) != sorted(paises_compania):
+        errores.append("OFICINAS: debe haber exactamente una oficina por país")
+    if set(REGIONES_OBRA) != paises_compania:
+        errores.append("REGIONES_OBRA: debe tener regiones para cada país")
+    peso_de = {c.codigo: c.peso for c in CARGOS}
+    for cod in (*CARGOS_EN_OBRA, CARGO_AJUSTE_OBRA):
+        if cod not in peso_de or clase_de.get(cod) != "EMP":
+            errores.append(f"{cod}: debe ser un cargo EMP (empleados en obra)")
+    if CARGO_AJUSTE_OBRA in peso_de:
+        fraccion = (DOTACION.empleados_en_obra - sum(peso_de.get(c, 0) for c in CARGOS_EN_OBRA)) \
+            / peso_de[CARGO_AJUSTE_OBRA]
+        if not 0 <= fraccion <= 1:
+            errores.append(f"Empleados en obra: el cargo de ajuste necesitaría {fraccion:.0%} en obra "
+                           "(debe quedar entre 0 % y 100 %)")
+    _suma_uno("Demografia.estado_civil", DEMOGRAFIA.estado_civil, errores)
+    codigos_motivo = [r[0] for r in EVENT_REASONS]
+    for motivo in MOVIMIENTOS.ok_recontratar:
+        if motivo not in codigos_motivo:
+            errores.append(f"Movimientos.ok_recontratar: {motivo} no existe en EVENT_REASONS")
+
     # Remuneración
     if not 0 < REMUNERACION.banda_min < 1 < REMUNERACION.banda_max:
         errores.append("Remuneracion: debe cumplirse 0 < banda_min < 1 < banda_max")
     for nombre in ("reajuste_mes", "merito_mes"):
         if not 1 <= getattr(REMUNERACION, nombre) <= 12:
             errores.append(f"Remuneracion.{nombre} debe estar entre 1 y 12")
+    if REMUNERACION.reajuste_mes == REMUNERACION.merito_mes:
+        errores.append("Remuneracion: reajuste y mérito no pueden caer en el mismo mes")
     _probabilidad("Remuneracion.merito_fraccion_elegible", REMUNERACION.merito_fraccion_elegible, errores)
 
     # Movimientos
@@ -351,6 +499,9 @@ def validar() -> list[str]:
             errores.append(f"Patrones.brecha_genero: {codigo} no existe en CARGOS")
         if not -0.5 < brecha <= 0:
             errores.append(f"Patrones.brecha_genero[{codigo}]: {brecha} fuera de rango (-0.5, 0]")
+    _probabilidad("Patrones.tolerancia_brecha_min", PATRONES.tolerancia_brecha_min, errores)
+    if PATRONES.tolerancia_brecha_z <= 0:
+        errores.append("Patrones.tolerancia_brecha_z debe ser positivo")
     cargos_sin_brecha = [c for c in codigos if c not in PATRONES.brecha_genero]
     if not cargos_sin_brecha:
         errores.append("Patrones.brecha_genero: el patrón es 'en algunos cargos, no en todos'")

@@ -61,16 +61,18 @@ Salen de los Ejercicios 3 y 4 de S2: son cálculos de **flujo estable**, no regl
 | **Empleados:** proporción con 12 meses o menos | ≈13 % | 10–17 % | Ejercicio 3 |
 | **Empleados:** tasa de renuncia ≤12 m ÷ tasa >12 m | ≈3,3 | 2,5–4,0 | Patrón plantado (definición de S2) |
 | **Obreros:** rotación anual sin fin de obra | ≈30 % | 25–35 % | Ejercicio 4 |
-| **Obreros:** términos por fin de obra al mes | entre ≈300 y ≈490 | — | Ejercicio 4; ver nota |
+| **Obreros:** términos por fin de obra al mes | ≈476 (S3); rango mensual 213–761 | aviso fuera de 300–600 | Ejercicio 4 y D-022; ver nota |
+| **Obreros:** traslados ÷ sobrantes (traslado + fin de obra) | `obr_fraccion_traslado` (20 %) | ±3 pp | D-013 |
 | **Obreros:** REHIRE ÷ términos por fin de obra | ≈35 % | 25–40 % | config |
 | Personas distintas en la ventana | ≈26.000 | 20.000–33.000 | Ejercicio 4 |
 | Personas distintas en todo el dataset (con calentamiento) | ≈37.000 | — | Ejercicio 4 más 24 meses |
-| Brecha de género en `JC_ING`, `JC_JOB`, `JC_JEF` | −8 %, −10 %, −6 % | ±2 pp | Patrón plantado |
-| Brecha de género en los demás cargos | 0 % | ±2 pp | Patrón plantado |
+| Brecha de género en `JC_ING`, `JC_JOB`, `JC_JEF` | −8 %, −10 %, −6 % | máx(2 pp; 3 × error estándar) (D-023) | Patrón plantado |
+| Brecha de género en los demás cargos | 0 % | máx(2 pp; 3 × error estándar) (D-023) | Patrón plantado |
 
 **Nota sobre el fin de obra.** La estimación de S2 fue ≈375 al mes (7.000 obreros ÷ 19 meses). Hay dos efectos que la mueven en sentidos opuestos:
 - **La sube:** por el trapecio, la dotación promedio de una obra es ≈75 % de su peak, pero salen todos los puestos del peak. Eso da ≈7.000 ÷ (0,75 × 19) ≈ 490.
 - **La baja:** parte de los obreros de las obras en bajada se transfieren (`TRF_OBRA`) a obras en subida y no terminan.
+- **Medido en S3 (D-022):** los sobrantes brutos son ≈591 al mes, sobre el techo de 490, porque el ciclo de D-006 se impone a todas las obras a la vez (f(m)). El traslado efectivo es 19,5 % de los sobrantes y deja el fin de obra en ≈476.
 
 ---
 
@@ -80,4 +82,6 @@ Salen de los Ejercicios 3 y 4 de S2: son cálculos de **flujo estable**, no regl
 |---|---|
 | ¿La antigüedad al salir se mide desde `EmpEmployment.startDate` o desde `originalStartDate`? Para un recontratado, cambia la tasa de renuncia temprana | Fase 4 (definición de la medida) |
 | ¿Cuántas filas tendrá `EmpJob`? Esto define si conviene CSV o Parquet en Power Query | S3, al correr el generador |
-| ¿La curva de dotación objetivo sigue un ciclo regular (seno) o la suma de obras con fechas al azar? | S3: se parte con el ciclo regular y se evalúa si se ve demasiado artificial |
+| ¿La curva de dotación objetivo sigue un ciclo regular (seno) o la suma de obras con fechas al azar? | S3: manda el seno (D-014); f(m) sale de rango y queda como aviso (D-022) |
+| ¿Un REHIRE conserva su posición en la banda o sortea una nueva? Hoy sortea una nueva: en S3, P0002642 subió 16 % siendo Jornal en los dos empleos | Fase 6 (compa-ratio) |
+| ¿Conviene que las obras nazcan siguiendo el ciclo (nacimientos regulares con amplitud y desfase)? | Si los dashboards de la Fase 3 muestran olas de contratación y despido sincronizadas que se vean artificiales |
